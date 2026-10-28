@@ -4,7 +4,7 @@
 // Incrementing CACHE_VERSION will kick off the install event and force
 // previously cached resources to be updated from the network.
 /** @type {string} */
-const CACHE_VERSION = '1793192834|8057760';
+const CACHE_VERSION = '1793193106|6468714';
 /** @type {string} */
 const CACHE_PREFIX = '뚜러뻥 대작전-sw-cache-';
 const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;

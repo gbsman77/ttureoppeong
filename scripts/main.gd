@@ -73,6 +73,7 @@ func _ready():
 		b.main = self
 		b.x = x
 		front.add_child(b)
+		front.move_child(b, 0)  # 휴지 벽은 주인공 뒤에 그린다 (주인공이 벽 뒤 가까이에 서 있다)
 		barricades.append(b)
 	fx = Fx.new()
 	stage_root.add_child(fx)
