@@ -365,9 +365,9 @@ func _draw_victory():
 		DU.text_c(self, Vector2.ZERO, "대승리!", 110, Color("ffd23f").lerp(Color.WHITE, 0.2 + sin(t * 8.0) * 0.2), 18, Color("6b3410"))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	if t > 0.8:
-		var y = 470.0 if key != null else 180.0
+		var y = 448.0 if key != null else 180.0
 		if key != null:
-			draw_rect(Rect2(0, 440, 960, 100), Color(0, 0, 0, 0.35))
+			draw_rect(Rect2(0, 420, 960, 120), Color(0, 0, 0, 0.4))
 		DU.text_c(self, Vector2(480, y), "모든 하수구를 뻥! 뚫었다! 똥괴물 나라에 평화가 왔어요", 28, Color.WHITE, 7)
 		DU.text_c(self, Vector2(480, y + 40), "최종 점수 %d" % main.score, 34, Color("fff2b0"), 8)
 		if main.new_record and int(t * 3.0) % 2 == 0:
