@@ -387,6 +387,7 @@ func ball_land(ball):
 		if b.blocks(x):
 			b.damage(1)
 			fx.splat(Vector2(x, b.top_y() + 8.0), 0.9)
+			fx.text(Vector2(x, b.top_y() - 30.0), "휴지가 막았다!", Color("b9f5ff"), 22, 0.6)
 			Sfx.play("splat", 1.2)
 			return
 	if player.can_be_hit() and abs(player.position.x - x) < 34.0:
