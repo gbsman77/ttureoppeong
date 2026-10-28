@@ -403,10 +403,16 @@ func enemy_killed(e):
 	score += e.points
 	if not e.is_boss:
 		kills += 1
-	if randf() < 0.14:
-		var it = Item.new()
-		it.setup(self, e.hit_center(), "life" if randf() < 0.4 else "bomb")
-		shots.add_child(it)
+	# 아이템: 4마리마다 하나는 꼭, 그 사이에도 가끔 나온다
+	if not e.is_boss and (kills % 4 == 0 or randf() < 0.2):
+		drop_item(e.hit_center())
+
+
+func drop_item(p: Vector2):
+	var it = Item.new()
+	var life = player.lives < 3 or randf() < 0.45
+	it.setup(self, Vector2(clamp(p.x, 50.0, W - 50.0), clamp(p.y, 140.0, 400.0)), "life" if life else "bomb")
+	shots.add_child(it)
 
 
 func boss_defeated():

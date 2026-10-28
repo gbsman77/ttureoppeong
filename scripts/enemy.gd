@@ -370,6 +370,8 @@ func take_hit(p: Vector2, dmg: int):
 		main.shake = max(main.shake, 7.0)
 		if mode != "enter":
 			_set_mode("stun")
+		if is_boss and randf() < 0.35:
+			main.drop_item(hit_center() + Vector2(randf_range(-120, 120), -40))
 	else:
 		face = "hit"
 		face_t = 0.35
