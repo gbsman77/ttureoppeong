@@ -70,7 +70,7 @@ func setup(m, k: String):
 			hp = 3; size = 1.1; speed = 70.0; color = Color("7a4a22"); points = 150
 			throw_cd = randf_range(1.8, 3.2)
 		"green":  # 녹색똥: 날쌔고 똥을 두 개씩 던진다
-			hp = 2; size = 0.95; speed = 150.0; color = Color("6bbf3a"); points = 200
+			hp = 2; size = 1.3; speed = 150.0; color = Color("6bbf3a"); points = 200
 			throw_cd = randf_range(2.0, 3.5); ball_kind = "green"
 		"boss":
 			is_boss = true; boss_name = "설사"
@@ -432,8 +432,12 @@ func _draw_textured(f: String, hop: float) -> bool:
 			t = base
 			name = "normal"
 		# 보스 그림들은 해상도가 서로 달라서 몸통 너비로 맞춘다
-		var width_units = {"normal": 125.0, "angry": 125.0, "hit": 125.0, "crit": 125.0, "rage": 125.0, "attack": 200.0, "down": 190.0}[name]
-		upp = width_units / t.get_width()
+		if tex_kind == "rainbow":
+			# 무지개똥 그림은 한 장에서 잘라서 크기가 같으니 기본 그림 키로 맞춘다
+			upp = 140.0 / base.get_height()
+		else:
+			var width_units = {"normal": 125.0, "angry": 125.0, "hit": 125.0, "crit": 125.0, "rage": 125.0, "attack": 200.0, "down": 190.0}[name]
+			upp = width_units / t.get_width()
 		if is_raging():
 			hop += randf_range(-2.0, 2.0)
 			DU.sprite(self, t, upp, Vector2(randf_range(-3.0, 3.0), hop))

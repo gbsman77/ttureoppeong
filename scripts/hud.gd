@@ -138,18 +138,29 @@ func _controls_text() -> String:
 func _title():
 	var t = main.t
 	var key = DU.tex("ui/title_key")
+	# 시작 화면 그림이 있으면 로고는 위쪽에 작게, 버튼은 아래쪽에 둬서 그림을 가리지 않는다
+	var logo_y = 108.0
+	var logo_w = 430.0
+	var btn_y = 288.0
 	if key != null:
-		draw_texture_rect(key, Rect2(0, 0, 960, 540), false)
+		# 천천히 확대되며 살짝 흔들리는 그림
+		var z = 1.03 + sin(t * 0.6) * 0.015
+		var off = Vector2(sin(t * 0.5) * 6.0, cos(t * 0.4) * 4.0)
+		draw_texture_rect(key, Rect2(Vector2(480, 270) - Vector2(480, 270) * z + off, Vector2(960, 540) * z), false)
+		draw_rect(Rect2(0, 430, 960, 110), Color(0, 0, 0, 0.25))
+		logo_y = 82.0
+		logo_w = 330.0
+		btn_y = 478.0
 	else:
 		_title_scene(t)
 	# 로고: 위에서 통 떨어져 튕기고, 그다음엔 살랑살랑
 	var drop = clamp(t / 0.7, 0.0, 1.0)
 	var bounce = 1.0 - pow(1.0 - drop, 3.0)
-	var ly = lerp(-140.0, 108.0, bounce) - abs(sin(min(t, 1.2) * 9.0)) * 18.0 * max(0.0, 1.0 - t / 1.2)
+	var ly = lerp(-140.0, logo_y, bounce) - abs(sin(min(t, 1.2) * 9.0)) * 18.0 * max(0.0, 1.0 - t / 1.2)
 	var s = 1.0 + sin(t * 2.5) * 0.03
 	var logo = DU.tex("ui/logo_title")
 	if logo != null:
-		var lw = 430.0
+		var lw = logo_w
 		var lh = lw * logo.get_height() / logo.get_width()
 		DU.quad(self, logo, Transform2D(sin(t * 1.7) * 0.03, Vector2(s, s), 0.0, Vector2(480, ly)), Rect2(-lw * 0.5, -lh * 0.5, lw, lh))
 	else:
@@ -158,10 +169,14 @@ func _title():
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	if t < 0.7:
 		return
-	DU.text_c(self, Vector2(480, 222), "~ 똥괴물을 무찌르고 하수구를 뚫어라! ~", 28, Color.WHITE, 7)
-	_start_button(Vector2(480, 288), t)
+	if key == null:
+		DU.text_c(self, Vector2(480, 222), "~ 똥괴물을 무찌르고 하수구를 뚫어라! ~", 28, Color.WHITE, 7)
+	_start_button(Vector2(480, btn_y), t)
 	if main.best > 0:
-		DU.text_c(self, Vector2(480, 350), "최고 점수 %d" % main.best, 24, Color("ffe08a"), 6)
+		if key == null:
+			DU.text_c(self, Vector2(480, 350), "최고 점수 %d" % main.best, 24, Color("ffe08a"), 6)
+		else:
+			DU.text_l(self, Vector2(16, 30), "최고 점수 %d" % main.best, 24, Color("ffe08a"), 6)
 
 
 ## 시작 화면 그림이 아직 없을 때: 햇살, 주인공, 똥괴물들, 날아가는 뚜러뻥으로 꾸민다.
@@ -221,7 +236,11 @@ func _start_button(c: Vector2, t: float):
 	var s = 1.0 + sin(t * 5.0) * 0.05
 	var w = 330.0
 	var h = 74.0
+	var font = 38
 	var btn = DU.tex("ui/btn_start")
+	if btn != null:
+		w = 400.0
+		font = 34
 	draw_set_transform(c, 0.0, Vector2(s, s))
 	if btn != null:
 		var bh = w * btn.get_height() / btn.get_width()
@@ -233,7 +252,7 @@ func _start_button(c: Vector2, t: float):
 		_pill(Rect2(-w * 0.5, -h * 0.5, w, h * 0.55), Color("ffb347"))
 		_pill(Rect2(-w * 0.5 + 24, -h * 0.5 + 8, w * 0.35, 12), Color(1, 1, 1, 0.45))
 	var label = "터치해서 시작!" if main.touch.enabled else "클릭해서 시작!"
-	DU.text_c(self, Vector2(0, 0), label, 38, Color.WHITE, 9, Color("6b2a00"))
+	DU.text_c(self, Vector2(0, -2), label, font, Color.WHITE, 9, Color("6b2a00"))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
