@@ -4,12 +4,23 @@ extends Node2D
 const DU = preload("res://scripts/draw_util.gd")
 
 var main
+var stage = 1
+
+
+## 스테이지 2 배경 그림이 아직 없으면 1스테이지 배경을 보랏빛으로 물들여 쓴다.
+func set_stage(n: int):
+	stage = n
+	material = null
+	if n == 2 and DU.tex("bg/bg_sewer2") == null:
+		material = DU.recolor("stage2")
 
 
 func _draw():
 	var t = main.t
 	var ft = main.FLOOR_TOP
-	var bgt = DU.tex("bg/bg_sewer")
+	var bgt = DU.tex("bg/bg_sewer2" if stage == 2 else "bg/bg_sewer")
+	if bgt == null:
+		bgt = DU.tex("bg/bg_sewer")
 	if bgt != null:
 		draw_texture_rect(bgt, Rect2(0, 0, 960, 540), false)
 		if main.state == "boss_warn" and int(main.t * 6.0) % 2 == 0:

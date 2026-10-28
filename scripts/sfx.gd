@@ -246,6 +246,21 @@ func _build():
 	_tone(a, 0.75, 0.8, _note(-24), _note(-25), "tri", 0.3, 0.005, 1.0)
 	sounds["gameover"] = _wav(a)
 
+	# 무적 상태에 맞음: 팅!
+	a = _buf(0.3)
+	_tone(a, 0, 0.28, 2600, 2500, "sin", 0.35, 0.001, 2.0)
+	_tone(a, 0, 0.2, 3900, 3800, "sin", 0.15, 0.001, 2.5)
+	sounds["ting"] = _wav(a)
+
+	# 보스 분노: 부글부글 크아앙!
+	a = _buf(0.9)
+	_tone(a, 0, 0.85, 120, 70, "saw", 0.4, 0.02, 0.6, 0.25, 22)
+	_noise(a, 0, 0.8, 0.35, 0.15, 1.0, 0.8, 12.0)
+	for i in 5:
+		var f = randf_range(160, 300)
+		_tone(a, i * 0.12, 0.08, f, f * 1.7, "sin", 0.25)
+	sounds["rage"] = _wav(a)
+
 	sounds["bgm"] = _build_bgm()
 
 

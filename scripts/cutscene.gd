@@ -256,7 +256,7 @@ func _draw_clear():
 			DU.text_c(self, Vector2.ZERO, "쾌변!", 120, c, 18, Color("6b3410"))
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	if t > 2.4:
-		DU.text_c(self, Vector2(480, 232 if DU.tex("ui/logo_kwaebyeon") != null else 185), "하수구가 뻥! 뚫렸다!  STAGE CLEAR", 34, Color.WHITE, 8)
+		DU.text_c(self, Vector2(480, 232 if DU.tex("ui/logo_kwaebyeon") != null else 185), "모든 하수구가 뻥! 뚫렸다!  ALL CLEAR", 34, Color.WHITE, 8)
 	if t > 3.0:
 		DU.text_c(self, Vector2(180, 500), "최종 점수 %d" % main.score, 32, Color("fff2b0"), 8)
 	if t > 3.5 and int(t * 2.0) % 2 == 0:

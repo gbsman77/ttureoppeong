@@ -19,6 +19,75 @@ static func tex(path: String) -> Texture2D:
 	return t
 
 
+# 새 그림이 아직 없을 때 기존 그림의 색을 바꿔 쓰는 셰이더.
+# 무지개 모드는 몸통(채도 있는 부분)을 위에서 아래로 무지개 띠로 칠한다.
+# red 는 보스가 화났을 때 빨갛게 달아오르는 정도.
+const RECOLOR_CODE = """
+shader_type canvas_item;
+uniform float hue_shift = 0.0;
+uniform float sat_mul = 1.0;
+uniform float val_mul = 1.0;
+uniform float rainbow = 0.0;
+uniform float red = 0.0;
+
+vec3 rgb2hsv(vec3 c) {
+	vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+	vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+	vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+	float d = q.x - min(q.w, q.y);
+	return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + 1e-10)), d / (q.x + 1e-10), q.x);
+}
+
+vec3 hsv2rgb(vec3 c) {
+	vec3 p = abs(fract(c.xxx + vec3(1.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0);
+	return c.z * mix(vec3(1.0), clamp(p - 1.0, 0.0, 1.0), c.y);
+}
+
+void fragment() {
+	vec4 c = COLOR;
+	vec3 h = rgb2hsv(c.rgb);
+	if (h.y > 0.22 && h.z > 0.16) {
+		if (rainbow > 0.5) {
+			h.x = fract(UV.y * 1.25 - TIME * 0.25);
+			h.y = max(h.y, 0.62);
+			h.z = clamp(h.z * 1.45, 0.0, 1.0);
+		} else {
+			h.x = fract(h.x + hue_shift);
+			h.y = clamp(h.y * sat_mul, 0.0, 1.0);
+			h.z = clamp(h.z * val_mul, 0.0, 1.0);
+		}
+		c.rgb = hsv2rgb(h);
+	} else if (rainbow < 0.5) {
+		h.z = clamp(h.z * mix(1.0, val_mul, 0.5), 0.0, 1.0);
+		c.rgb = hsv2rgb(h);
+	}
+	float l = dot(c.rgb, vec3(0.3, 0.55, 0.15));
+	c.rgb = mix(c.rgb, vec3(0.55 + l * 0.6, l * 0.25, l * 0.15), red);
+	COLOR = c;
+}
+"""
+static var _recolor_shader: Shader = null
+const RECOLOR = {
+	"none": {},
+	"green": {"hue_shift": 0.2, "sat_mul": 1.0, "val_mul": 1.35},
+	"plain": {"hue_shift": -0.01, "sat_mul": 0.85, "val_mul": 0.8},
+	"rainbow": {"rainbow": 1.0},
+	"stage2": {"hue_shift": 0.42, "sat_mul": 1.1, "val_mul": 0.95},
+}
+
+
+## 색 바꾸기 재질. 노드마다 따로 만들어서 red 값을 각자 바꿀 수 있다.
+static func recolor(preset: String) -> ShaderMaterial:
+	if _recolor_shader == null:
+		_recolor_shader = Shader.new()
+		_recolor_shader.code = RECOLOR_CODE
+	var m = ShaderMaterial.new()
+	m.shader = _recolor_shader
+	for k in RECOLOR[preset]:
+		m.set_shader_parameter(k, RECOLOR[preset][k])
+	return m
+
+
 ## 발밑(0,0) 기준으로 그림을 그린다. upp = 그림 1px 당 게임 단위.
 static func sprite(ci: CanvasItem, t: Texture2D, upp: float, offset: Vector2 = Vector2.ZERO, modulate: Color = Color.WHITE):
 	var sz = t.get_size() * upp

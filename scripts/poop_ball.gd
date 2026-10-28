@@ -13,10 +13,19 @@ var sc = 0.5
 var t = 0.0
 var dur = 1.1
 var spin = 0.0
+var kind = ""  # "" 보통 똥 / "green" 녹색똥 / "rainbow" 무지개똥
+var tex_name = "props/poop_ball"
 
 
-func setup(m, f: Vector2, to: Vector2, start_scale: float, flight: float):
+func setup(m, f: Vector2, to: Vector2, start_scale: float, flight: float, k: String = ""):
 	main = m
+	kind = k
+	if kind != "":
+		tex_name = "props/poop_ball_" + kind
+		if DU.tex(tex_name) == null:
+			# 전용 그림이 없으면 보통 똥 그림의 색을 바꾼다
+			tex_name = "props/poop_ball"
+			material = DU.recolor(kind)
 	from = f
 	target = to
 	s0 = start_scale
@@ -44,7 +53,7 @@ func tick(delta: float):
 func pop(award: bool):
 	if is_queued_for_deletion():
 		return
-	main.fx.burst(pos, Color("7a4a1e"), 8, 160.0)
+	main.fx.burst(pos, _color(), 8, 160.0)
 	if award:
 		main.score += 10
 		main.fx.text(pos, "팡!", Color("ffe08a"), 22, 0.5)
@@ -52,12 +61,21 @@ func pop(award: bool):
 	queue_free()
 
 
+func _color() -> Color:
+	match kind:
+		"green":
+			return Color("6bbf3a")
+		"rainbow":
+			return Color.from_hsv(randf(), 0.7, 1.0)
+	return Color("7a4a1e")
+
+
 func _draw():
 	var k = min(t / dur, 1.0)
 	# 떨어질 자리에 그림자 (피할 수 있게)
 	DU.ellipse(self, target + Vector2(0, 50), 26.0 * k + 4.0, 7.0 * k + 1.0, Color(0, 0, 0, 0.18 + 0.25 * k))
 	var r = 16.0 * sc
-	var t = DU.tex("props/poop_ball")
+	var t = DU.tex(tex_name)
 	if t != null:
 		DU.quad(self, t, Transform2D(spin, pos), Rect2(-r - 2, -r - 2, 2 * r + 4, 2 * r + 4))
 		return

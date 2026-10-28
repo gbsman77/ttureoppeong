@@ -1,5 +1,6 @@
 extends Node2D
-## 게임 전체 흐름: 타이틀 → 변기 다이빙 → 똥괴물 소탕 → 보스 '설사' → 쾌변! 클리어
+## 게임 전체 흐름: 타이틀 → 변기 다이빙 → 똥괴물 소탕 → 보스 '설사'
+## → 스테이지 2: 그냥똥·녹색똥 소탕 → 마지막 보스 '무지개똥' → 쾌변! 클리어
 
 const Player = preload("res://scripts/player.gd")
 const Enemy = preload("res://scripts/enemy.gd")
@@ -18,9 +19,12 @@ const H = 540.0
 const GROUND_Y = 505.0      # 주인공 발 위치
 const FLOOR_TOP = 320.0     # 바닥이 시작되는 지평선 (배경 그림의 굴 바닥)
 const FLOOR_BOTTOM = 430.0  # 똥괴물이 다가올 수 있는 가장 앞쪽
-const KILL_QUOTA = 25       # 보스 등장까지 처치해야 하는 똥괴물 수
+const KILL_QUOTAS = [25, 30]  # 스테이지별로 보스 등장까지 처치해야 하는 똥괴물 수
 const BOSS_HP = 120
-const PLAY_STATES = ["play", "boss_warn", "boss", "boss_down"]
+const RAINBOW_HP = 170
+const LAST_STAGE = 2
+const PLAY_STATES = ["play", "boss_warn", "boss", "boss_down", "stage_clear"]
+const BEST_PATH = "user://best.cfg"
 
 var state = "title"
 var t = 0.0
@@ -38,6 +42,9 @@ var boss = null
 var barricades = []
 var kills = 0
 var score = 0
+var best = 0
+var stage = 1
+var kill_quota = KILL_QUOTAS[0]
 var spawn_timer = 0.0
 var shake = 0.0
 var stage_banner = 0.0
@@ -78,7 +85,24 @@ func _ready():
 	touch = Touch.new()
 	touch.main = self
 	add_child(touch)
+	best = _load_best()
 	goto("title")
+
+
+func _load_best() -> int:
+	var cf = ConfigFile.new()
+	if cf.load(BEST_PATH) == OK:
+		return int(cf.get_value("score", "best", 0))
+	return 0
+
+
+func _save_best():
+	if score <= best:
+		return
+	best = score
+	var cf = ConfigFile.new()
+	cf.set_value("score", "best", best)
+	cf.save(BEST_PATH)
 
 
 func _setup_input():
@@ -114,6 +138,7 @@ func goto(s: String):
 	match s:
 		"title":
 			_clear_world()
+			_set_stage(1)
 			cutscene.start("")
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 			Sfx.play_bgm(1.0)
@@ -125,13 +150,13 @@ func goto(s: String):
 			stage_banner = 3.0
 			spawn_timer = 2.5
 			Input.mouse_mode = Input.MOUSE_MODE_HIDDEN
-			Sfx.play_bgm(1.0)
+			Sfx.play_bgm(1.0 if stage == 1 else 1.08)
 		"boss_warn":
 			Sfx.stop_bgm()
 			Sfx.play("warn")
 			Sfx.play("warn", 0.8, -4.0)
 		"boss":
-			Sfx.play_bgm(1.18)
+			Sfx.play_bgm(1.18 if stage == 1 else 1.26)
 		"boss_down":
 			Sfx.stop_bgm()
 			Sfx.play("boss_down")
@@ -142,11 +167,17 @@ func goto(s: String):
 			for s2 in shots.get_children():
 				if s2 is PoopBall:
 					s2.pop(false)
+		"stage_clear":
+			Sfx.play("fanfare")
+			score += 1000
+			player.lives = min(player.lives + 1, player.MAX_LIVES)
 		"clear":
+			_save_best()
 			_clear_world()
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 			cutscene.start("clear")
 		"gameover":
+			_save_best()
 			Sfx.stop_bgm()
 			Sfx.play("gameover")
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -157,11 +188,29 @@ func start_game():
 	kills = 0
 	score = 0
 	boss = null
+	_set_stage(1)
 	_clear_world()
 	player.reset()
 	for b in barricades:
 		b.reset()
 	goto("intro")
+
+
+func _set_stage(n: int):
+	stage = n
+	kill_quota = KILL_QUOTAS[n - 1]
+	bg.set_stage(n)
+
+
+## 스테이지 1 보스를 쓰러뜨린 뒤 더 깊은 하수구로 내려간다.
+func _next_stage():
+	_clear_world()
+	_set_stage(stage + 1)
+	kills = 0
+	for b in barricades:
+		b.reset()
+	player.position.x = W * 0.5
+	goto("play")
 
 
 func _clear_world():
@@ -189,7 +238,7 @@ func _process(delta):
 		"intro":
 			if t > 3.8 or (t > 0.6 and (Input.is_action_just_pressed("start") or tapped)):
 				goto("play")
-		"play", "boss_warn", "boss", "boss_down":
+		"play", "boss_warn", "boss", "boss_down", "stage_clear":
 			_tick_world(delta)
 		"clear":
 			if t > 3.5 and pressed:
@@ -213,7 +262,7 @@ func _tick_world(delta):
 	for b in barricades:
 		b.tick(delta)
 	fx.tick(delta)
-	if state != "play" and state != "boss_warn" and state != "boss" and state != "boss_down":
+	if not is_playing():
 		return  # 이번 프레임에 게임 오버 등으로 상태가 바뀜
 	match state:
 		"play":
@@ -222,7 +271,7 @@ func _tick_world(delta):
 			if spawn_timer <= 0.0 and minion_count() < max_alive:
 				spawn_minion()
 				spawn_timer = randf_range(0.8, 1.8) - min(kills * 0.02, 0.5)
-			if kills >= KILL_QUOTA:
+			if kills >= kill_quota:
 				goto("boss_warn")
 		"boss_warn":
 			if t > 2.6:
@@ -230,7 +279,10 @@ func _tick_world(delta):
 				goto("boss")
 		"boss_down":
 			if t > 3.4:
-				goto("clear")
+				goto("clear" if stage >= LAST_STAGE else "stage_clear")
+		"stage_clear":
+			if t > 3.2:
+				_next_stage()
 
 
 func depth_scale(y: float) -> float:
@@ -256,10 +308,15 @@ func spawn_minion(at = null):
 	var e = Enemy.new()
 	var r = randf()
 	var kind = "mini"
-	if kills > 5 and r < 0.3:
-		kind = "runner"
-	elif kills > 11 and r < 0.55:
-		kind = "tank"
+	if stage == 1:
+		if kills > 5 and r < 0.3:
+			kind = "runner"
+		elif kills > 11 and r < 0.55:
+			kind = "tank"
+	else:
+		kind = "plain"
+		if r < 0.25 + min(kills * 0.015, 0.3):
+			kind = "green"
 	e.setup(self, kind)
 	if at == null:
 		var side = -1.0 if randf() < 0.5 else 1.0
@@ -271,7 +328,7 @@ func spawn_minion(at = null):
 
 func spawn_boss():
 	var e = Enemy.new()
-	e.setup(self, "boss")
+	e.setup(self, "boss" if stage == 1 else "rainbow")
 	e.position = Vector2(515.0, FLOOR_TOP + 10.0)
 	boss = e
 	enemies.add_child(e)
@@ -317,9 +374,9 @@ func plunger_land(pos: Vector2, big: bool):
 		fx.puff(pos, depth_scale(pos.y))
 
 
-func enemy_throw(from: Vector2, to: Vector2, s0: float, dur: float = 1.1):
+func enemy_throw(from: Vector2, to: Vector2, s0: float, dur: float = 1.1, kind: String = ""):
 	var b = PoopBall.new()
-	b.setup(self, from, to, s0, dur)
+	b.setup(self, from, to, s0, dur, kind)
 	shots.add_child(b)
 
 
@@ -353,5 +410,5 @@ func enemy_killed(e):
 
 
 func boss_defeated():
-	score += 5000
+	score += 5000 * stage
 	goto("boss_down")
