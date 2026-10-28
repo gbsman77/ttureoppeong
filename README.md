@@ -29,15 +29,18 @@
 4. **보스 '설사' 등장**: 경고 사이렌 후 하수구 굴에서 나타남. 패턴: 똥 부채꼴 던지기 / 바닥 훑는 설사 스프레이 / 꼬마똥 소환. 체력이 절반 이하면 빨라짐
 5. **보스 쓰러짐**: "설사 격파!" → STAGE 1 CLEAR (보너스 1000점, 목숨 +1)
 6. **STAGE 2 무지개 하수구**: 그냥똥(튼튼함)과 녹색똥(빠르고 똥을 두 개씩 던짐) 30마리
-7. **마지막 보스 '무지개똥'**: 설사의 패턴에 **무지개 똥비**(천장에서 쏟아짐)가 더해짐
-8. **클리어**: 꾸르륵... → **펑!** 하고 변기가 뚫리며 물기둥 + 주인공이 튀어나옴 → **쾌변!** 팡파레
+7. **보스 '무지개똥'**: 설사의 패턴에 **무지개 똥비**(천장에서 쏟아짐)가 더해짐 → STAGE 2 CLEAR
+8. **STAGE 3 황금 하수구**: 물똥, 토끼똥(깡충깡충), 피똥(튼튼, 케찹 똥 던짐) 35마리
+9. **마지막 보스 '황금똥'**: 황금 똥비와 순간이동 공격까지
+10. **클리어** → **대승리 화면**(불꽃놀이, 최종 점수, 신기록)
+
 
 ## 시스템
 - 뚜러뻥에 맞으면 똥괴물 얼굴이 **맞은 얼굴(>_<)** 이 되고, 뚜러뻥이 얼굴에 잠깐 붙습니다.
 - 같은 괴물을 0.9초 안에 **연속 4번** 맞히면 **치명타!** (3배 데미지, 소용돌이 눈 치명타 얼굴, 기절)
 - 똥괴물 종류: 1스테이지 꼬마똥(기본), 물똥(빠르게 깡충), 단단똥(튼튼하고 화난 얼굴) / 2스테이지 그냥똥, 녹색똥
 - **보스 분노**: 보스가 쉬지 않고 10대를 맞으면 빨갛게 달아오르며 2.6초 동안 무적("팅!")이 되고 똥을 세 번 연달아 퍼부어 반격합니다. 분노가 끝나면 6초 동안은 다시 분노하지 않습니다. (`enemy.gd` 의 `RAGE_HITS`, `RAGE_TIME`, `RAGE_COOLDOWN`)
-- 스테이지 2 그림이 빠지면 기존 그림의 색을 바꿔서 대신 씁니다. 파일 이름: `enemies/plain_*`, `enemies/green_*`, `boss/rainbow_{normal,angry,hit,crit,rage,attack,down}`, `bg/bg_sewer2`, `props/poop_ball_green`, `props/poop_ball_rainbow`, `ui/title_key`, `ui/btn_start`
+- 스테이지 2 그림이 빠지면 기존 그림의 색을 바꿔서 대신 씁니다. 파일 이름: `enemies/plain_*`, `enemies/green_*`, `boss/rainbow_{normal,angry,hit,crit,rage,attack,down}`, `bg/bg_sewer2`, `props/poop_ball_green`, `props/poop_ball_rainbow`, `ui/title_key`, `ui/btn_start`, 스테이지 3: `enemies/bunny_*`, `enemies/blood_*`, `boss/gold_*`, `bg/bg_sewer3`, `props/poop_ball_{gold,ketchup}`, `hero/hero_legs`, `hero/hero_hit`, `ui/victory_key`, `ui/logo_victory`
 - 날아오는 똥 덩어리는 바닥 그림자로 떨어질 위치가 보이며, 뚜러뻥으로 공중에서 터뜨릴 수 있습니다.
 - 앞쪽 **휴지 바리케이드**가 똥을 막아 주지만 맞을수록 무너집니다.
 - 쓰러진 괴물이 가끔 아이템(휴지=목숨, 왕뚜러뻥)을 떨어뜨립니다. 뚜러뻥으로 맞히면 획득.

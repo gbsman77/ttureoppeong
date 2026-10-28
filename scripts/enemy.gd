@@ -44,7 +44,7 @@ var spray_from = 0.0
 var spray_to = 0.0
 var tex_kind = "mini"   # 그림 파일 이름 앞부분 (enemies/<tex_kind>_hit.png 등)
 var boss_name = ""
-var ball_kind = ""      # 던지는 똥 덩어리 종류: "" / "green" / "rainbow"
+var ball_kind = ""      # 던지는 똥 덩어리 종류: "" / "green" / "rainbow" / "gold" / "ketchup"
 var recolor = ""        # 새 그림이 없어서 색만 바꿔 그리는 중이면 그 이름
 var streak = 0          # 보스가 쉬지 않고 맞은 횟수
 var streak_t = 0.0
@@ -78,6 +78,18 @@ func setup(m, k: String):
 			drip = true; wobble = 0.06
 			mode = "enter"
 			throw_cd = 1.0
+		"bunny":  # 토끼똥: 토끼귀를 달고 깡충깡충 뛰어다닌다
+			hp = 2; size = 1.0; speed = 125.0; color = Color("b07a4a"); points = 200
+			throw_cd = randf_range(2.0, 3.5)
+		"blood":  # 피똥: 머리에 케찹을 묻힌 튼튼하고 성질 급한 똥
+			hp = 5; size = 1.15; speed = 60.0; color = Color("6b3a1e"); points = 300; angry = true
+			throw_cd = randf_range(1.2, 2.2); ball_kind = "ketchup"
+		"gold":
+			is_boss = true; boss_name = "황금똥"
+			hp = main.GOLD_HP; size = 2.8; speed = 125.0; color = Color("ffc83d"); points = 0
+			wobble = 0.05; ball_kind = "gold"
+			mode = "enter"
+			throw_cd = 1.0
 		"rainbow":
 			is_boss = true; boss_name = "무지개똥"
 			hp = main.RAINBOW_HP; size = 2.8; speed = 110.0; color = Color("e85d9a"); points = 0
@@ -87,7 +99,8 @@ func setup(m, k: String):
 	max_hp = hp
 	tex_kind = kind
 	# 새 그림이 아직 없으면 비슷한 그림을 색만 바꿔서 쓴다
-	var fallback = {"plain": "mini", "green": "runner", "rainbow": "boss"}
+	var fallback = {"plain": "mini", "green": "runner", "rainbow": "boss",
+		"bunny": "mini", "blood": "tank", "gold": "boss"}
 	if kind in fallback and DU.tex(_tex_path("normal")) == null:
 		tex_kind = fallback[kind]
 		recolor = kind
@@ -101,8 +114,8 @@ func setup(m, k: String):
 func _tex_path(name: String) -> String:
 	if tex_kind == "boss":
 		return "boss/boss_" + name
-	if tex_kind == "rainbow":
-		return "boss/rainbow_" + name
+	if tex_kind == "rainbow" or tex_kind == "gold":
+		return "boss/%s_%s" % [tex_kind, name]
 	return "enemies/%s_%s" % [tex_kind, name]
 
 
@@ -296,20 +309,20 @@ func _rage_wave(i: int):
 		var spread = (j - (n - 1) / 2.0) * 60.0
 		var to = Vector2(clamp(aim + spread, 20.0, main.W - 20.0), main.GROUND_Y - 50.0)
 		main.enemy_throw(position + Vector2(36, -110) * _scale(), to, _scale() * 0.32, 0.8, ball_kind)
-	if kind == "rainbow" and i == 2:
+	if (kind == "rainbow" or kind == "gold") and i == 2:
 		_rainbow_rain(6)
 
 
-## 무지개똥 전용: 천장에서 무지개 똥비가 쏟아진다
+## 무지개똥, 황금똥 전용: 천장에서 똥비가 쏟아진다
 func _rainbow_rain(n: int):
 	for j in n:
 		var x = randf_range(40.0, main.W - 40.0)
 		var from = Vector2(x + randf_range(-60, 60), -30.0)
-		main.enemy_throw(from, Vector2(x, main.GROUND_Y - 50.0), 0.7, randf_range(0.9, 1.3), "rainbow")
+		main.enemy_throw(from, Vector2(x, main.GROUND_Y - 50.0), 0.7, randf_range(0.9, 1.3), ball_kind)
 
 
 func _boss_attack():
-	var pattern = attack_n % (4 if kind == "rainbow" else 3)
+	var pattern = attack_n % (3 if kind == "boss" else (5 if kind == "gold" else 4))
 	attack_n += 1
 	match pattern:
 		0:  # 똥 부채꼴 던지기
@@ -334,12 +347,21 @@ func _boss_attack():
 				main.fx.text(hit_center() + Vector2(0, -60), "나와라 얘들아!", Color("ffe08a"), 26)
 			_set_mode("walk")
 			target_x = randf_range(220.0, 740.0)
-		3:  # 무지개 똥비
-			_rainbow_rain(9)
-			main.fx.text(hit_center() + Vector2(0, -60), "무지개 똥비다~!", Color("b9f5ff"), 28)
+		3:  # 무지개 똥비 / 황금 똥비
+			_rainbow_rain(11 if kind == "gold" else 9)
+			var msg = "황금 똥비다~! 번쩍번쩍!" if kind == "gold" else "무지개 똥비다~!"
+			main.fx.text(hit_center() + Vector2(0, -60), msg, Color("b9f5ff"), 28)
 			Sfx.play("warn", 1.6, -6.0)
 			_set_mode("walk")
 			target_x = randf_range(220.0, 740.0)
+		4:  # 황금똥 전용: 양옆으로 순간이동하며 똥 두 번 던지기
+			main.fx.puff(hit_center(), 2.0)
+			position.x = clamp(main.player.position.x + (260.0 if randf() < 0.5 else -260.0), 140.0, main.W - 140.0)
+			main.fx.sparks(hit_center(), Color("ffe14d"), 16)
+			main.fx.text(hit_center() + Vector2(0, -60), "번쩍!", Color("ffe14d"), 34)
+			for i in 5:
+				_throw_at_player(Vector2(36, -110), (i - 2) * 55.0, 1.0)
+			_set_mode("windup")
 
 
 func take_hit(p: Vector2, dmg: int):
@@ -397,7 +419,7 @@ func die(award: bool):
 	face = "dead"
 	face_t = 999.0
 	if is_boss:
-		var msg = "으아아~ 설사 멈췄다..." if kind == "boss" else "내 무지개가... 사라진다..."
+		var msg = {"boss": "으아아~ 설사 멈췄다...", "rainbow": "내 무지개가... 사라진다...", "gold": "내 황금이... 그냥 똥이 됐어..."}[kind]
 		main.fx.text(hit_center() + Vector2(0, -80), msg, Color("ffe08a"), 30, 2.0)
 		if material != null:
 			material.set_shader_parameter("red", 0.0)
@@ -434,7 +456,7 @@ func _draw_textured(f: String, hop: float) -> bool:
 			t = base
 			name = "normal"
 		# 보스 그림들은 해상도가 서로 달라서 몸통 너비로 맞춘다
-		if tex_kind == "rainbow":
+		if tex_kind == "rainbow" or tex_kind == "gold":
 			# 무지개똥 그림은 한 장에서 잘라서 크기가 같으니 기본 그림 키로 맞춘다
 			upp = 140.0 / base.get_height()
 		else:
@@ -461,6 +483,28 @@ func _draw_textured(f: String, hop: float) -> bool:
 	return true
 
 
+## 새 그림이 없을 때 토끼귀, 케찹을 코드로 덧그린다
+func _draw_extras(hop: float):
+	if recolor == "" or not alive:
+		return
+	if kind == "bunny":
+		for sx in [-1.0, 1.0]:
+			var wig = sin(time * 6.0 + sx) * 0.12
+			draw_set_transform(Vector2(sx * 15.0, -108.0 + hop), sx * 0.25 + wig, Vector2.ONE)
+			DU.ellipse(self, Vector2(0, -22), 12, 28, DU.INK)
+			DU.ellipse(self, Vector2(0, -22), 9.5, 25.5, Color("fff6ee"))
+			DU.ellipse(self, Vector2(0, -20), 4.5, 17, Color("ffb3c4"))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	elif kind == "blood":
+		var c = Color("e2231a")
+		DU.ellipse(self, Vector2(2, -112 + hop), 24, 12, c)
+		for i in 3:
+			var x = -14.0 + i * 13.0
+			var d = 10.0 + fmod(time * 6.0 + i * 3.0, 10.0)
+			DU.ellipse(self, Vector2(x, -104 + hop + d * 0.5), 4.5, d * 0.6, c)
+		DU.ellipse(self, Vector2(-6, -116 + hop), 6, 3, Color(1, 1, 1, 0.6))
+
+
 ## 분노했을 때 머리 위로 피어오르는 김
 func _draw_steam():
 	for i in 6:
@@ -473,6 +517,8 @@ func _draw():
 	var hop = 0.0
 	if (kind == "runner" or kind == "green") and alive and mode == "walk":
 		hop = -abs(sin(time * 12.0)) * 14.0
+	elif kind == "bunny" and alive and mode != "stun":
+		hop = -abs(sin(time * 7.0)) * (30.0 if mode == "walk" else 8.0)
 	DU.ellipse(self, Vector2.ZERO, 46, 10, Color(0, 0, 0, 0.25))
 	if is_boss:
 		var pc = color.lightened(0.1)
@@ -485,6 +531,7 @@ func _draw():
 	if main.player != null:
 		look = Vector2(clamp((main.player.position.x - position.x) / 300.0, -1.0, 1.0), 0.7)
 	if _draw_textured(f, hop):
+		_draw_extras(hop)
 		return
 	var arm_up = alive and (mode == "windup" or mode == "spray")
 	draw_set_transform(Vector2(0, hop), 0.0, Vector2.ONE)

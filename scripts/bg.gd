@@ -11,14 +11,14 @@ var stage = 1
 func set_stage(n: int):
 	stage = n
 	material = null
-	if n == 2 and DU.tex("bg/bg_sewer2") == null:
-		material = DU.recolor("stage2")
+	if n >= 2 and DU.tex("bg/bg_sewer%d" % n) == null:
+		material = DU.recolor("stage%d" % n)
 
 
 func _draw():
 	var t = main.t
 	var ft = main.FLOOR_TOP
-	var bgt = DU.tex("bg/bg_sewer2" if stage == 2 else "bg/bg_sewer")
+	var bgt = DU.tex("bg/bg_sewer%d" % stage if stage >= 2 else "bg/bg_sewer")
 	if bgt == null:
 		bgt = DU.tex("bg/bg_sewer")
 	if bgt != null:

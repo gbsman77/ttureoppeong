@@ -67,6 +67,10 @@ func _color() -> Color:
 			return Color("6bbf3a")
 		"rainbow":
 			return Color.from_hsv(randf(), 0.7, 1.0)
+		"gold":
+			return Color("ffc83d")
+		"ketchup":
+			return Color("e2231a")
 	return Color("7a4a1e")
 
 

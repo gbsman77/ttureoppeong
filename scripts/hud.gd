@@ -68,6 +68,8 @@ func _game_hud():
 		var bc = Color("d0452f")
 		if b.kind == "rainbow":
 			bc = Color.from_hsv(fmod(m.t * 0.4, 1.0), 0.65, 0.95)
+		elif b.kind == "gold":
+			bc = Color("ffc83d").lerp(Color.WHITE, 0.25 + sin(m.t * 6.0) * 0.2)
 		_bar(Rect2(280, 16, 400, 24), float(max(0, b.hp)) / b.max_hp, bc, "보스 " + b.boss_name)
 		if b.is_raging() and int(m.t * 8.0) % 2 == 0:
 			DU.text_l(self, Vector2(692, 38), "무적!", 26, Color("ff6b5a"), 6)
@@ -80,16 +82,19 @@ func _game_hud():
 		if m.stage == 1:
 			DU.text_c(self, Vector2(480, 210), "STAGE 1 - 막힌 하수구", 56, c, 10, o)
 			DU.text_c(self, Vector2(480, 268), "똥괴물 %d마리를 무찌르면 보스가 나온다!" % m.kill_quota, 28, Color(1, 1, 1, a), 7, o)
-		else:
+		elif m.stage == 2:
 			DU.text_c(self, Vector2(480, 210), "STAGE 2 - 무지개 하수구", 56, Color(0.75, 1, 0.55, a), 10, o)
-			DU.text_c(self, Vector2(480, 268), "그냥똥과 녹색똥 %d마리를 무찌르면 마지막 보스!" % m.kill_quota, 28, Color(1, 1, 1, a), 7, o)
+			DU.text_c(self, Vector2(480, 268), "그냥똥과 녹색똥 %d마리를 무찌르면 보스가 나온다!" % m.kill_quota, 28, Color(1, 1, 1, a), 7, o)
+		else:
+			DU.text_c(self, Vector2(480, 210), "STAGE 3 - 황금 하수구", 56, Color(1, 0.85, 0.25, a), 10, o)
+			DU.text_c(self, Vector2(480, 268), "물똥, 토끼똥, 피똥 %d마리를 무찌르면 마지막 보스!" % m.kill_quota, 28, Color(1, 1, 1, a), 7, o)
 		DU.text_c(self, Vector2(480, 310), _controls_text(), 20, Color(0.9, 0.95, 1, a), 5, o)
 
 	if m.state == "boss_warn":
 		var on = int(m.t * 5.0) % 2 == 0
 		draw_rect(Rect2(0, 180, 960, 110), Color(0.8, 0.1, 0.05, 0.45 if on else 0.25))
 		DU.text_c(self, Vector2(480, 215), "경고!  WARNING!", 48, Color("ffe14d") if on else Color.WHITE, 10)
-		var warn = "보스 '설사'가 몰려온다! 꾸르르륵..." if m.stage == 1 else "마지막 보스 '무지개똥'이 반짝반짝 다가온다!"
+		var warn = ["보스 '설사'가 몰려온다! 꾸르르륵...", "보스 '무지개똥'이 반짝반짝 다가온다!", "마지막 보스 '황금똥'이 번쩍번쩍 나타났다!"][m.stage - 1]
 		DU.text_c(self, Vector2(480, 262), warn, 30, Color.WHITE, 7)
 
 	if m.state == "boss_down" and m.boss != null:
@@ -101,6 +106,17 @@ func _game_hud():
 
 	if m.state == "stage_clear":
 		_stage_clear()
+
+	if m.hurt_flash > 0.0:
+		# 주인공이 맞으면 화면 가장자리가 빨갛게 번쩍
+		var a2 = m.hurt_flash / 0.35
+		for i in 6:
+			var w = 70.0 - i * 11.0
+			var c2 = Color(1, 0.1, 0.05, 0.12 * a2)
+			draw_rect(Rect2(0, 0, 960, w), c2)
+			draw_rect(Rect2(0, 540 - w, 960, w), c2)
+			draw_rect(Rect2(0, 0, w, 540), c2)
+			draw_rect(Rect2(960 - w, 0, w, 540), c2)
 
 	if m.is_playing() and not (m.touch.enabled and not m.touch.aim_active):
 		var aim = m.get_aim()
@@ -118,7 +134,7 @@ func _stage_clear():
 	var k = min(t / 0.35, 1.0)
 	var s = 1.0 + (1.0 - k) * 1.2
 	draw_set_transform(Vector2(480, 170), sin(t * 3.0) * 0.04, Vector2(s, s))
-	DU.text_c(self, Vector2.ZERO, "STAGE 1 CLEAR!", 72, Color("ffdd33"), 12)
+	DU.text_c(self, Vector2.ZERO, "STAGE %d CLEAR!" % main.stage, 72, Color("ffdd33"), 12)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	if t > 0.6:
 		DU.text_c(self, Vector2(480, 245), "보너스 +1000   두루마리 목숨 +1", 30, Color.WHITE, 7)

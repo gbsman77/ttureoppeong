@@ -3,6 +3,7 @@ extends Node2D
 
 const DU = preload("res://scripts/draw_util.gd")
 const MAX_LIVES = 7
+const HURT_TIME = 0.9
 
 var main
 var lives = 5
@@ -72,8 +73,9 @@ func tick(delta: float, active: bool):
 func hurt():
 	lives -= 1
 	invuln = 1.6
-	hurt_t = 0.6
+	hurt_t = HURT_TIME
 	Sfx.play("hurt")
+	main.fx.text(position + Vector2(0, -150), ["으악!", "으엑!", "똥 맞았다!"][randi() % 3], Color("ffb3a8"), 30, 0.8)
 	main.shake = max(main.shake, 9.0)
 
 
@@ -83,7 +85,7 @@ func add_life():
 
 func _draw():
 	DU.ellipse(self, Vector2.ZERO, 32, 8, Color(0, 0, 0, 0.3))
-	if invuln > 0.0 and int(time * 16.0) % 2 == 0:
+	if invuln > 0.0 and hurt_t <= 0.0 and int(time * 16.0) % 2 == 0:
 		return
 	if roll_t > 0.0:
 		var a = (0.42 - roll_t) / 0.42 * TAU * roll_dir
@@ -101,6 +103,9 @@ func _draw():
 	var aim_dir = main.get_aim() - (position + Vector2(20, -66))
 	var arm_up = throw_anim > 0.0 or (main.is_playing() and Input.is_action_pressed("throw"))
 	var idle = DU.tex("hero/hero_idle")
+	if idle != null and hurt_t > 0.0:
+		_draw_hurt(idle)
+		return
 	if idle != null:
 		var name = "idle"
 		if hurt_t > 0.0:
@@ -112,3 +117,30 @@ func _draw():
 		DU.sprite(self, t if t != null else idle, 125.0 / idle.get_height(), Vector2(0, bob))
 		return
 	DU.hero(self, aim_dir, walk, arm_up, throw_anim <= 0.0, hurt_t > 0.0)
+
+
+## 똥에 맞은 모습: 뒤로 휘청이고, 안전모에 똥이 철퍽 붙어 흘러내리고, 별이 빙글빙글
+func _draw_hurt(idle: Texture2D):
+	var k = hurt_t / HURT_TIME
+	var tilt = sin(time * 28.0) * 0.1 * k
+	var lift = -sin((1.0 - k) * PI) * 10.0
+	var hit = DU.tex("hero/hero_hit")
+	var t = hit if hit != null else DU.tex("hero/hero_hurt")
+	if t == null:
+		t = idle
+	var h = 125.0 * (float(t.get_height()) / idle.get_height() if hit == null else 1.0)
+	var w = h * t.get_width() / t.get_height()
+	DU.quad(self, t, Transform2D(tilt, Vector2(0, lift)), Rect2(-w * 0.5, -h, w, h))
+	if hit == null:
+		# 안전모 위에 붙은 똥과 흘러내리는 똥물
+		var head = Vector2(0, -108 + lift).rotated(tilt)
+		var brown = Color("7a4a1e")
+		DU.ellipse(self, head + Vector2(-4, -4), 26, 14, Color("4a2a10"))
+		DU.ellipse(self, head + Vector2(-4, -6), 23, 11, brown)
+		DU.ellipse(self, head + Vector2(6, -14), 12, 9, brown)
+		DU.ellipse(self, head + Vector2(10, -20), 6, 5, Color("9a6232"))
+		for i in 3:
+			var x = -18.0 + i * 15.0
+			var d = (1.0 - k) * 26.0 + i * 3.0
+			DU.ellipse(self, head + Vector2(x, 4 + d * 0.5), 4, 4 + d * 0.5, brown)
+	DU.stars(self, Vector2(0, -150 + lift), 26, time * 1.5)

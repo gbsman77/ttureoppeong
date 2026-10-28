@@ -29,6 +29,8 @@ uniform float sat_mul = 1.0;
 uniform float val_mul = 1.0;
 uniform float rainbow = 0.0;
 uniform float red = 0.0;
+uniform float tint_hue = -1.0;
+uniform float tint_sat = 0.6;
 
 vec3 rgb2hsv(vec3 c) {
 	vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
@@ -46,7 +48,13 @@ vec3 hsv2rgb(vec3 c) {
 void fragment() {
 	vec4 c = COLOR;
 	vec3 h = rgb2hsv(c.rgb);
-	if (h.y > 0.22 && h.z > 0.16) {
+	if (tint_hue >= 0.0) {
+		// 한 가지 색으로 물들이기 (명암은 그대로)
+		h.x = tint_hue;
+		h.y = h.y * 0.3 + tint_sat * 0.7;
+		h.z = clamp(h.z * val_mul, 0.0, 1.0);
+		c.rgb = hsv2rgb(h);
+	} else if (h.y > 0.22 && h.z > 0.16) {
 		if (rainbow > 0.5) {
 			h.x = fract(UV.y * 1.25 - TIME * 0.25);
 			h.y = max(h.y, 0.62);
@@ -73,6 +81,11 @@ const RECOLOR = {
 	"plain": {"hue_shift": -0.01, "sat_mul": 0.85, "val_mul": 0.8},
 	"rainbow": {"rainbow": 1.0},
 	"stage2": {"hue_shift": 0.42, "sat_mul": 1.1, "val_mul": 0.95},
+	"stage3": {"tint_hue": 0.1, "tint_sat": 0.65, "val_mul": 1.05},
+	"gold": {"hue_shift": 0.05, "sat_mul": 1.1, "val_mul": 1.7},
+	"bunny": {"hue_shift": 0.0, "sat_mul": 0.7, "val_mul": 1.35},
+	"blood": {"hue_shift": -0.02, "sat_mul": 1.1, "val_mul": 0.85},
+	"ketchup": {"hue_shift": -0.08, "sat_mul": 1.4, "val_mul": 1.3},
 }
 
 

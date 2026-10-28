@@ -1,6 +1,7 @@
 extends Node2D
 ## 게임 전체 흐름: 타이틀 → 변기 다이빙 → 똥괴물 소탕 → 보스 '설사'
-## → 스테이지 2: 그냥똥·녹색똥 소탕 → 마지막 보스 '무지개똥' → 쾌변! 클리어
+## → 스테이지 2: 그냥똥·녹색똥 소탕 → 보스 '무지개똥'
+## → 스테이지 3: 물똥·토끼똥·피똥 소탕 → 마지막 보스 '황금똥' → 쾌변! → 대승리 화면
 
 const Player = preload("res://scripts/player.gd")
 const Enemy = preload("res://scripts/enemy.gd")
@@ -19,10 +20,12 @@ const H = 540.0
 const GROUND_Y = 505.0      # 주인공 발 위치
 const FLOOR_TOP = 320.0     # 바닥이 시작되는 지평선 (배경 그림의 굴 바닥)
 const FLOOR_BOTTOM = 430.0  # 똥괴물이 다가올 수 있는 가장 앞쪽
-const KILL_QUOTAS = [25, 30]  # 스테이지별로 보스 등장까지 처치해야 하는 똥괴물 수
+const KILL_QUOTAS = [25, 30, 35]  # 스테이지별로 보스 등장까지 처치해야 하는 똥괴물 수
 const BOSS_HP = 120
 const RAINBOW_HP = 170
-const LAST_STAGE = 2
+const GOLD_HP = 220
+const BOSS_KINDS = ["boss", "rainbow", "gold"]
+const LAST_STAGE = 3
 const PLAY_STATES = ["play", "boss_warn", "boss", "boss_down", "stage_clear"]
 const BEST_PATH = "user://best.cfg"
 
@@ -45,6 +48,8 @@ var score = 0
 var best = 0
 var stage = 1
 var kill_quota = KILL_QUOTAS[0]
+var new_record = false
+var hurt_flash = 0.0
 var spawn_timer = 0.0
 var shake = 0.0
 var stage_banner = 0.0
@@ -173,10 +178,15 @@ func goto(s: String):
 			score += 1000
 			player.lives = min(player.lives + 1, player.MAX_LIVES)
 		"clear":
+			new_record = score > best
 			_save_best()
 			_clear_world()
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 			cutscene.start("clear")
+		"victory":
+			cutscene.start("victory")
+			Sfx.play("fanfare")
+			Sfx.play_bgm(1.12)
 		"gameover":
 			_save_best()
 			Sfx.stop_bgm()
@@ -228,6 +238,7 @@ func _process(delta):
 	shake = max(0.0, shake - delta * 25.0)
 	stage_root.position = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * shake
 	stage_banner = max(0.0, stage_banner - delta)
+	hurt_flash = max(0.0, hurt_flash - delta)
 	if touch.is_portrait():
 		return  # 세로 화면이면 가로로 돌릴 때까지 멈춤
 	var tapped = touch.consume_tap()
@@ -237,12 +248,15 @@ func _process(delta):
 			if pressed and t > 0.3:
 				start_game()
 		"intro":
-			if t > 3.8 or (t > 0.6 and (Input.is_action_just_pressed("start") or tapped)):
+			if t > cutscene.INTRO_LEN or (t > 0.6 and (Input.is_action_just_pressed("start") or tapped)):
 				goto("play")
 		"play", "boss_warn", "boss", "boss_down", "stage_clear":
 			_tick_world(delta)
 		"clear":
-			if t > 3.5 and pressed:
+			if t > 3.5 and pressed or t > 7.0:
+				goto("victory")
+		"victory":
+			if t > 2.5 and pressed:
 				goto("title")
 		"gameover":
 			fx.tick(delta)
@@ -314,10 +328,16 @@ func spawn_minion(at = null):
 			kind = "runner"
 		elif kills > 11 and r < 0.55:
 			kind = "tank"
-	else:
+	elif stage == 2:
 		kind = "plain"
 		if r < 0.25 + min(kills * 0.015, 0.3):
 			kind = "green"
+	else:
+		kind = "runner"
+		if r < 0.4:
+			kind = "bunny"
+		elif kills > 5 and r < 0.4 + min(0.1 + kills * 0.01, 0.35):
+			kind = "blood"
 	e.setup(self, kind)
 	if at == null:
 		var side = -1.0 if randf() < 0.5 else 1.0
@@ -329,7 +349,7 @@ func spawn_minion(at = null):
 
 func spawn_boss():
 	var e = Enemy.new()
-	e.setup(self, "boss" if stage == 1 else "rainbow")
+	e.setup(self, BOSS_KINDS[stage - 1])
 	e.position = Vector2(515.0, FLOOR_TOP + 10.0)
 	boss = e
 	enemies.add_child(e)
@@ -393,6 +413,7 @@ func ball_land(ball):
 			return
 	if player.can_be_hit() and abs(player.position.x - x) < 34.0:
 		player.hurt()
+		hurt_flash = 0.35
 		fx.splat(player.position + Vector2(0, -95), 1.2)
 		if player.lives <= 0:
 			goto("gameover")

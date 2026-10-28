@@ -1,9 +1,11 @@
 extends Node2D
-## 인트로(변기 속으로 다이빙)와 엔딩(쾌변! 변기가 펑 뚫림) 연출.
+## 인트로(변기 속으로 다이빙)와 엔딩(쾌변! 변기가 펑 뚫림), 대승리 화면 연출.
 
 const DU = preload("res://scripts/draw_util.gd")
 const BOWL = Vector2(480, 348)
 const WATER = Color("7ec8ef")
+const LEGS_END = 2.7  # 변기 위로 다리가 버둥거리다 쏙 빨려 들어가는 시각
+const INTRO_LEN = 4.6
 
 var main
 var mode = ""
@@ -45,8 +47,9 @@ func _process(delta):
 		if _once("splash", 1.5):
 			Sfx.play("splash")
 			_water(BOWL, 30, 420)
-		if _once("flush", 1.7):
+		if _once("flush", LEGS_END):
 			Sfx.play("flush")
+			_water(BOWL, 16, 300)
 	elif mode == "clear":
 		if _once("rumble", 0.05):
 			Sfx.play("rumble")
@@ -65,6 +68,8 @@ func _process(delta):
 				"life": 4.0, "col": cols[randi() % cols.size()], "r": randf_range(3, 6), "g": 0.0})
 		if t > 1.1 and t < 3.5:
 			_water(BOWL + Vector2(randf_range(-25, 25), -300), 1, 300)
+	elif mode == "victory":
+		_victory_tick(delta)
 	for q in parts:
 		q.life -= delta
 		q.v.y += q.g * delta
@@ -82,6 +87,8 @@ func _draw():
 		_draw_intro()
 	elif mode == "clear":
 		_draw_clear()
+	elif mode == "victory":
+		_draw_victory()
 
 
 func _room(shake: Vector2, swirl: float, wc: Color):
@@ -128,9 +135,9 @@ func _parts():
 func _draw_intro():
 	var swirl = 0.0
 	var wc = WATER
-	if t > 1.5:
-		swirl = (t - 1.5) * 9.0
-		wc = WATER.lerp(Color("4f8fb8"), min((t - 1.5) / 1.5, 1.0))
+	if t > LEGS_END:
+		swirl = (t - LEGS_END) * 9.0
+		wc = WATER.lerp(Color("4f8fb8"), min((t - LEGS_END) / 1.5, 1.0))
 	_room(Vector2.ZERO, swirl, wc)
 	if t < 0.9:
 		var x = lerp(-60.0, 300.0, t / 0.9)
@@ -146,31 +153,62 @@ func _draw_intro():
 			draw_set_transform(p, k * PI, Vector2(sc, sc))
 			DU.hero(self, Vector2(0, -1), 0.0, true, true)
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	elif t < 2.2:
-		# 물 위로 버둥거리는 다리
-		var a = swirl * 0.6
-		var r = 40.0 * (1.0 - (t - 1.5) / 0.7)
-		var c = BOWL + Vector2(cos(a) * r, sin(a) * r * 0.3)
-		var kick = sin(t * 30.0) * 6.0
-		var sink = (t - 1.5) / 0.7 * 26.0
-		draw_rect(Rect2(c.x - 11, c.y - 30 + sink + kick, 8, 30 - sink), Color("1f4a99"))
-		draw_rect(Rect2(c.x + 3, c.y - 30 + sink - kick, 8, 30 - sink), Color("1f4a99"))
-		DU.ellipse(self, Vector2(c.x - 7, c.y - 30 + sink + kick), 7, 4, Color("6b3e1f"))
-		DU.ellipse(self, Vector2(c.x + 7, c.y - 30 + sink - kick), 7, 4, Color("6b3e1f"))
+	elif t < LEGS_END:
+		_draw_legs()
 	_parts()
 	if t > 0.15 and t < 1.3:
 		DU.text_c(self, Vector2(480, 70), "큰일이다! 하수구가 똥괴물 때문에 꽉 막혔다!", 34, Color.WHITE, 8)
 	if t > 0.75 and t < 1.5:
 		DU.text_c(self, Vector2(330, 290), "으랏차!", 40, Color("ffd23f"), 8)
-	if t > 1.5 and t < 2.4:
-		DU.text_c(self, Vector2(480, 220), "풍덩!", 64, Color("5ad1ff"), 10)
-	if t > 2.2:
+	if t > 1.5 and t < 2.1:
+		DU.text_c(self, Vector2(480, 130), "풍덩!", 64, Color("5ad1ff"), 10)
+	if t > 1.8 and t < LEGS_END:
+		DU.text_c(self, Vector2(640, 250 + sin(t * 20.0) * 4.0), "버둥버둥!", 34, Color.WHITE, 8)
+	if t > LEGS_END + 0.2:
 		DU.text_c(self, Vector2(480, 110), "슈와아아~ 하수구로 출동!", 44, Color.WHITE, 9)
-	if t > 3.1:
-		var k = clamp((t - 3.1) / 0.6, 0.0, 1.0)
+	if t > INTRO_LEN - 0.9:
+		var k = clamp((t - (INTRO_LEN - 0.9)) / 0.6, 0.0, 1.0)
 		var r2 = lerp(1100.0, 0.0, k)
 		draw_arc(BOWL, r2 + 700.0, 0, TAU, 72, Color.BLACK, 1400.0)
 	DU.text_c(self, Vector2(880, 525), "누르면 건너뛰기", 16, Color(1, 1, 1, 0.7), 4)
+
+
+## 변기 물 위로 쏙 솟은 주인공 다리. 파닥파닥 버둥거리다 마지막에 쏙 빨려 들어간다.
+func _draw_legs():
+	var u = t - 1.5
+	var sink = clamp((t - (LEGS_END - 0.35)) / 0.35, 0.0, 1.0)
+	var base = BOWL + Vector2(0, 4)
+	var lt = DU.tex("hero/hero_legs")
+	if lt != null:
+		var h = 125.0 * (1.0 - sink * 0.9)
+		var w = 125.0 * lt.get_width() / lt.get_height()
+		var wig = sin(t * 26.0) * 0.08
+		# 그림의 아래쪽(허리)부터 잘라서 물속으로 들어가는 것처럼
+		var src = Rect2(0, 0, lt.get_width(), lt.get_height() * (1.0 - sink * 0.9))
+		draw_set_transform(base, wig, Vector2.ONE)
+		draw_texture_rect_region(lt, Rect2(-w * 0.5, -h, w, h), src)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	else:
+		var length = 78.0 * (1.0 - sink)
+		for sx in [-1.0, 1.0]:
+			var ang = sx * (0.28 + sin(u * 26.0 + sx) * 0.18)
+			draw_set_transform(base + Vector2(sx * 8.0, 0), ang, Vector2.ONE)
+			if length > 4.0:
+				draw_rect(Rect2(-11, -length, 22, length), DU.INK)
+				draw_rect(Rect2(-8.5, -length + 2, 17, length - 2), Color("2f6fd6"))
+				draw_rect(Rect2(-8.5, -length + 2, 6, length - 2), Color("4f8ff0"))
+				# 운동화 (밑창이 하늘을 향함)
+				DU.ellipse(self, Vector2(sx * 4.0, -length - 4), 15, 10, DU.INK)
+				DU.ellipse(self, Vector2(sx * 4.0, -length - 4), 12.5, 7.5, Color("8a4f22"))
+				DU.ellipse(self, Vector2(sx * 4.0, -length - 9), 11, 4, Color("e9d8c0"))
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	# 허리가 잠긴 자리의 물보라
+	for i in 5:
+		var a = t * 9.0 + i * TAU / 5.0
+		DU.ellipse(self, base + Vector2(cos(a) * 30.0, sin(a) * 6.0 - 2.0), 7, 4, Color(1, 1, 1, 0.85))
+	if randf() < 0.4:
+		parts.append({"p": base + Vector2(randf_range(-30, 30), -60.0 * (1.0 - sink)), "v": Vector2(randf_range(-120, 120), randf_range(-260, -120)),
+			"life": 0.6, "col": Color(0.7, 0.9, 1.0), "r": randf_range(3, 6), "g": 900.0})
 
 
 func _draw_clear():
@@ -260,4 +298,79 @@ func _draw_clear():
 	if t > 3.0:
 		DU.text_c(self, Vector2(180, 500), "최종 점수 %d" % main.score, 32, Color("fff2b0"), 8)
 	if t > 3.5 and int(t * 2.0) % 2 == 0:
-		DU.text_c(self, Vector2(480, 520), "누르면 처음으로", 24, Color("b9f5ff"), 6)
+		DU.text_c(self, Vector2(480, 520), "누르면 계속", 24, Color("b9f5ff"), 6)
+
+
+# ---------------------------------------------------------------- 대승리 화면
+
+func _victory_tick(_delta):
+	var cols = [Color("ff5a5a"), Color("ffd23f"), Color("5ad1ff"), Color("8cff7a"), Color("ff9be0")]
+	if randf() < 0.6:
+		parts.append({"p": Vector2(randf_range(0, 960), -10), "v": Vector2(randf_range(-40, 40), randf_range(80, 170)),
+			"life": 4.5, "col": cols[randi() % cols.size()], "r": randf_range(3, 6), "g": 0.0})
+	# 펑펑 터지는 불꽃놀이
+	if _once("fw%d" % int(t / 0.7), 0.0):
+		var c = Vector2(randf_range(120, 840), randf_range(60, 230))
+		var col = cols[randi() % cols.size()]
+		for i in 26:
+			var a = i * TAU / 26.0
+			parts.append({"p": c, "v": Vector2(cos(a), sin(a)) * randf_range(160, 240),
+				"life": randf_range(0.7, 1.1), "col": col, "r": randf_range(3, 5), "g": 120.0})
+		Sfx.play("pop", randf_range(1.4, 1.9), -10.0)
+
+
+func _victory_actor(path: String, pos: Vector2, height: float, rot: float = 0.0):
+	var tx = DU.tex(path)
+	if tx == null:
+		return
+	var w = height * tx.get_width() / tx.get_height()
+	DU.quad(self, tx, Transform2D(rot, pos), Rect2(-w * 0.5, -height, w, height))
+
+
+func _draw_victory():
+	var key = DU.tex("ui/victory_key")
+	if key != null:
+		draw_texture_rect(key, Rect2(0, 0, 960, 540), false)
+	else:
+		_room(Vector2.ZERO, 0.0, WATER)
+		draw_rect(Rect2(0, 0, 960, 540), Color(0.1, 0.05, 0.2, 0.35))
+		var c = Vector2(480, 120)
+		for i in 16:
+			var a0 = t * 0.3 + i * TAU / 16.0
+			var a1 = a0 + TAU / 32.0
+			draw_colored_polygon(PackedVector2Array([c, c + Vector2(cos(a0), sin(a0)) * 800.0, c + Vector2(cos(a1), sin(a1)) * 800.0]), Color(1, 0.9, 0.4, 0.12))
+		# 그동안 물리친 보스들이 뒤에서, 똥괴물들이 앞에서 축하해 준다 (반창고 붙인 치명타 얼굴)
+		_victory_actor("boss/boss_normal", Vector2(150, 470), 150.0, sin(t * 2.0) * 0.05)
+		_victory_actor("boss/rainbow_normal", Vector2(810, 470), 170.0, -sin(t * 2.0) * 0.05)
+		var cast = [["enemies/mini_hit", 80.0], ["enemies/plain_normal", 250.0], ["enemies/green_normal", 710.0], ["enemies/runner_crit", 880.0]]
+		for i in cast.size():
+			var bob = abs(sin(t * 5.0 + i * 1.3)) * 22.0
+			_victory_actor(cast[i][0], Vector2(cast[i][1], 535 - bob), 100.0)
+		var hop = abs(sin(t * 4.0)) * 16.0
+		_victory_actor("hero/hero_win", Vector2(480, 530 - hop), 200.0)
+	_parts()
+	# 대승리! 로고
+	var u = t
+	var s = 1.0 + exp(-u * 4.0) * sin(u * 16.0) * 0.6
+	if u < 0.15:
+		s = u / 0.15 * 1.5
+	var ly = 70.0 if key != null else 92.0
+	var lt = DU.tex("ui/logo_victory")
+	if lt != null:
+		var lw = 360.0
+		var lh = lw * lt.get_height() / lt.get_width()
+		DU.quad(self, lt, Transform2D(sin(t * 3.0) * 0.04, Vector2(s, s), 0.0, Vector2(480, ly)), Rect2(-lw * 0.5, -lh * 0.5, lw, lh))
+	else:
+		draw_set_transform(Vector2(480, ly), sin(t * 3.0) * 0.05, Vector2(s, s))
+		DU.text_c(self, Vector2.ZERO, "대승리!", 110, Color("ffd23f").lerp(Color.WHITE, 0.2 + sin(t * 8.0) * 0.2), 18, Color("6b3410"))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	if t > 0.8:
+		var y = 470.0 if key != null else 180.0
+		if key != null:
+			draw_rect(Rect2(0, 440, 960, 100), Color(0, 0, 0, 0.35))
+		DU.text_c(self, Vector2(480, y), "모든 하수구를 뻥! 뚫었다! 똥괴물 나라에 평화가 왔어요", 28, Color.WHITE, 7)
+		DU.text_c(self, Vector2(480, y + 40), "최종 점수 %d" % main.score, 34, Color("fff2b0"), 8)
+		if main.new_record and int(t * 3.0) % 2 == 0:
+			DU.text_c(self, Vector2(700, y + 40), "신기록!", 30, Color("ff6b5a"), 7)
+	if t > 2.5 and int(t * 2.0) % 2 == 0:
+		DU.text_c(self, Vector2(480, 528 if key != null else 300), "누르면 처음으로", 24, Color("b9f5ff"), 6)
